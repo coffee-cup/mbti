@@ -1,8 +1,3 @@
-import torch
-import torch.autograd as autograd
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 import csv, re
 from gensim.models import word2vec
 from gensim.models import Word2Vec
@@ -17,6 +12,9 @@ def create_word2vec_model(posts, num_threads, feature_size, min_words, distance_
 
         return model
         
+def load_word2vec(name):
+    return Word2Vec.load(name)     
+    
 #does some more preprocessing of the data
 def extract_data(filename):
     with open(filename) as csvfile:
@@ -35,15 +33,16 @@ def extract_data(filename):
 
 #matches each word of a post to the index in the model. Note not every word is in the model       
 def convert_data_to_index(posts, model):
-    seen = set()
+    #seen = set()
     index_data = []
 
     for post in posts:
         index_of_post = []
         for word in post:
             
-            if word in model.wv and word not in seen:
-                seen.add(word)
+            if word in model.wv:
+                #if word not in seen:
+                    #seen.add(word)
                 index_of_post.append(model.wv.vocab[word].index)
 
         index_data.append(index_of_post)
@@ -68,7 +67,8 @@ if __name__ == "__main__":
     #train the model the first time, takes a couple mins so after do this once just want to load it
     model = create_word2vec_model(posts, 4, 300, 10, 10, 10) #comment out this line after ran once
    
-    #model = Word2Vec.load("temp_model") #uncomment this line if running again
+    #model = load_word2vec("temp_model") #uncomment this line if running again
     weights = get_embeddings(model)
     indexed = convert_data_to_index(posts, model)
+
 
