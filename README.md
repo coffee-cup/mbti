@@ -72,7 +72,8 @@ Word2Vec:
                         output word2vec file is found
   --num_samples NUM_SAMPLES
                         Number of samples to return from word2vec. -1 for all
-                        samples```
+                        samples
+```
 
 # Data Format
 
