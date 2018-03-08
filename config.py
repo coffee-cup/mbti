@@ -16,29 +16,47 @@ def add_argument_group(name):
     return arg
 
 
+parser.add_argument(
+    '--data_dir',
+    type=str,
+    default='./data',
+    help='Directory to save/read all data files from')
+
 # Arguments for preprocessing
 preprocessing_arg = add_argument_group('Preprocessing')
 
 preprocessing_arg.add_argument(
     '--raw_csv_file',
     type=str,
-    default='./mbti_1.csv',
-    help='Location of csv file downloaded from Kaggle')
+    default='mbti_1.csv',
+    help='Filename of csv file downloaded from Kaggle')
 
 preprocessing_arg.add_argument(
     '--pre_save_file',
     type=str,
-    default='./mbti_preprocessed.csv',
-    help='Location to save preprocessed csv file')
+    default='mbti_preprocessed.csv',
+    help='Filename to save preprocessed csv file as')
 
 preprocessing_arg.add_argument(
     '--force_preprocessing',
     type=str2bool,
     default=False,
-    help="Whether or not to do preprocessing even if output csv file is found")
+    help='Whether or not to do preprocessing even if output csv file is found')
 
 # Arguments for word2vec
 word2vec_arg = add_argument_group('Word2Vec')
+
+word2vec_arg.add_argument(
+    '--embeddings_model',
+    type=str,
+    default='embeddings_model',
+    help='Filename to save word2vec model to')
+
+word2vec_arg.add_argument(
+    '--embeddings_file',
+    type=str,
+    default='vector_data',
+    help='Filename to save mbti data with word vectors to')
 
 word2vec_arg.add_argument(
     '--num_threads',
@@ -70,8 +88,16 @@ word2vec_arg.add_argument(
     default=10,
     help='Number of epochs to train word2vec for')
 
+word2vec_arg.add_argument(
+    '--force_word2vec',
+    type=str2bool,
+    default=False,
+    help=
+    'Whether or not to create word embeddings even if output word2vec file is found'
+)
 
-def get_config():
+
+def parse_config():
     config, unparsed = parser.parse_known_args()
 
     return config, unparsed

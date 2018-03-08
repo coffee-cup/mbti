@@ -5,7 +5,19 @@ import string
 import numpy as np
 import pandas as pd
 
-from config import get_config, print_usage
+from utils import *
+
+# Regular expression to match punctuation
+reg_punc = re.compile('[%s]' % re.escape(string.punctuation))
+
+# Regular expression to match links
+reg_link = re.compile('http\S+', flags=re.MULTILINE)
+
+# Regular expression to match non-characters
+reg_alpha = re.compile('[^a-zA-Z ]')
+
+# Regular expression to match all whitespace
+reg_spaces = re.compile('\s+', flags=re.MULTILINE)
 
 
 def filter_text(post):
@@ -13,25 +25,29 @@ def filter_text(post):
     return len(post) > 0
 
 
-reg_punc = re.compile('[%s]' % re.escape(string.punctuation))
-
-
 def preprocess_text(post):
     """Remove any junk we don't want to use in the post."""
 
     # Remove links
-    post = re.sub(r'http\S+', '', post, flags=re.MULTILINE)
+    post = reg_link.sub('', post)
 
     # All lowercase
     post = post.lower()
 
-    # Remove puncutation
-    post = reg_punc.sub('', post)
+    # Remove non-alpha chars
+    post = reg_alpha.sub('', post)
+
+    # Replace multiple whitespace with single space
+    post = reg_spaces.sub(' ', post)
+
+    # Strip whitespace
+    posts = post.strip()
 
     return post
 
 
 def create_new_rows(row):
+    """Create new rows of the data by preprocessing the individual posts and filtering out bad ones."""
     posts = row['posts'].split('|||')
     rows = []
 
@@ -44,8 +60,11 @@ def create_new_rows(row):
 
 
 def preprocess(config):
-    """Preprocess the data using the config."""
-    print('\n--- Processing')
+    """Preprocess the data using the config.
+
+    :config user configuration
+    """
+    print('\n--- Preprocessing')
 
     if os.path.isfile(config.pre_save_file) and not config.force_preprocessing:
         df = pd.read_csv(config.pre_save_file)
@@ -57,21 +76,13 @@ def preprocess(config):
         newrows += create_new_rows(row)
 
     df = pd.DataFrame(newrows)
-    unique = df.groupby('type').nunique()
-
     df.to_csv(config.pre_save_file)
 
     return df.values
 
 
 if __name__ == '__main__':
-    # Parse configuration
-    config, unparsed = get_config()
-    # If we have unparsed arguments, print usage and exit
-    if len(unparsed) > 0:
-        print_usage()
-        exit(1)
-
+    config = get_config()
     posts = preprocess(config)
 
     # Visualize the preprocessing
