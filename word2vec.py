@@ -52,20 +52,6 @@ def extract_words(data):
 
     return words
 
-    # with open(filename) as csvfile:
-    #     reader = csv.DictReader(csvfile)
-    #     posts = []
-    #     #takes out all numbers and empty posts
-    #     for row in reader:
-    #         post = row.get('post')
-
-    #         if (len(post.strip()) > 0):
-    #             text = re.sub("[^a-zA-Z ]", "", post)
-    #             words = text.split()
-    #             posts.append(words)
-
-    #     return posts
-
 
 def convert_data_to_index(posts, model):
     """Match each word of a post to the index in the model.
@@ -83,13 +69,6 @@ def convert_data_to_index(posts, model):
         index_data.append(index_of_post)
 
     return index_data
-
-
-# def convert_keyed_to_vector(keyed_vector):
-#     """Converts gensim.models.keyedvectors to numpy array
-
-#     :keyed_vector gensim.models.keyedvectors
-#     """
 
 
 def convert_posts_to_vectors(data, model):
@@ -115,6 +94,10 @@ def convert_posts_to_vectors(data, model):
                 vec = model.wv[word]
                 sentence.append(vec)
         embedded_data.append([mbti_type, sentence])
+
+        # TODO: Remove this after finding better way to save data
+        if idx >= 2000:
+            break
 
     return embedded_data
 
@@ -142,6 +125,7 @@ def word2vec(config):
     embedding_data = None
     if os.path.isfile(config.embeddings_file) and not config.force_word2vec:
         # Load data with word vectors from file
+        print('Found saved data')
         embedding_data = read_data(config.embeddings_file)
     else:
         # Train model
