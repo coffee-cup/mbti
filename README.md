@@ -38,6 +38,7 @@ usage: main.py [-h] [--data_dir DATA_DIR] [--raw_csv_file RAW_CSV_FILE]
                [--feature_size FEATURE_SIZE] [--min_words MIN_WORDS]
                [--distance_between_words DISTANCE_BETWEEN_WORDS]
                [--epochs EPOCHS] [--force_word2vec FORCE_WORD2VEC]
+               [--num_samples NUM_SAMPLES]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -69,7 +70,9 @@ Word2Vec:
   --force_word2vec FORCE_WORD2VEC
                         Whether or not to create word embeddings even if
                         output word2vec file is found
-```
+  --num_samples NUM_SAMPLES
+                        Number of samples to return from word2vec. -1 for all
+                        samples```
 
 # Data Format
 
