@@ -4,6 +4,8 @@ import string
 
 import numpy as np
 import pandas as pd
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
 
 from utils import *
 
@@ -39,6 +41,12 @@ def preprocess_text(post):
 
     # Replace multiple whitespace with single space
     post = reg_spaces.sub(' ', post)
+
+    # Remove stop words
+    stop_words = set(stopwords.words('english'))
+    word_tokens = word_tokenize(post)
+    post = [w for w in word_tokens if not w in stop_words]
+    post = ' '.join(post)
 
     # Strip whitespace
     posts = post.strip()
@@ -87,5 +95,6 @@ if __name__ == '__main__':
 
     # Visualize the preprocessing
     print('Preprocess Complete!')
+    print('{} Total rows'.format(len(posts)))
     print('Here are the first 2 rows')
     print(posts[0:2])
