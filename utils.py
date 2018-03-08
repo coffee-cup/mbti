@@ -1,9 +1,51 @@
 # Utils file for useful functions
 
 import os
-import pickle
+
+import numpy as np
 
 from config import parse_config, print_usage
+
+first_codes = ['I', 'E']
+second_codes = ['S', 'N']
+third_codes = ['T', 'F']
+fourth_codes = ['J', 'P']
+codes = [first_codes, second_codes, third_codes, fourth_codes]
+
+FIRST = 0
+SECOND = 1
+THIRD = 2
+FOURTH = 3
+ALL = 16
+
+personality_types = [
+    'ISTJ', 'ISFJ', 'INFJ', 'INTJ', 'ISTP', 'ISFP', 'INFP', 'INTP', 'ESTP',
+    'ESFP', 'ENFP', 'ENTP', 'ESTJ', 'ESFJ', 'ENFJ', 'ENTJ'
+]
+
+
+def one_hot_encode_type(t):
+    i = personality_types.index(t)
+    Y = np.zeros(len(personality_types))
+    Y[i] = 1
+    return Y
+
+
+def one_hot_to_type(Y):
+    i = np.where(Y == 1)[0][0]
+    return personality_types[i]
+
+
+def get_binary_for_code(code, personality_type):
+    c = codes[code]
+    return int(personality_type[code] != c[0])
+
+
+def get_char_for_binary(code, binary):
+    if type(binary) is list:
+        binary = binary[0]
+    c = codes[code]
+    return c[binary]
 
 
 def get_config():
@@ -29,17 +71,3 @@ def get_config():
         os.makedirs(config.data_dir)
 
     return config
-
-
-def save_data(data, filename):
-    """Pickle and save some data to disk."""
-    with open(filename, 'wb') as f:
-        pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
-
-
-def read_data(filename):
-    """Reads a pickle file from disk and returns the data."""
-    data = None
-    with open(filename, 'rb') as f:
-        data = pickle.load(f)
-    return data

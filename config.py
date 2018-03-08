@@ -96,6 +96,12 @@ word2vec_arg.add_argument(
     'Whether or not to create word embeddings even if output word2vec file is found'
 )
 
+word2vec_arg.add_argument(
+    '--num_samples',
+    type=int,
+    default=-1,
+    help='Number of samples to return from word2vec. -1 for all samples')
+
 
 def parse_config():
     config, unparsed = parser.parse_known_args()

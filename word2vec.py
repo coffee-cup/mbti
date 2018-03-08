@@ -7,7 +7,8 @@ import pandas as pd
 from gensim.models import Word2Vec, word2vec
 
 from tqdm import trange
-from utils import *
+from utils import (ALL, FIRST, FOURTH, SECOND, THIRD, get_binary_for_code,
+                   get_config, one_hot_encode_type)
 
 
 def create_word2vec_model(data, config):
@@ -71,7 +72,7 @@ def convert_data_to_index(posts, model):
     return index_data
 
 
-def convert_posts_to_vectors(data, model):
+def convert_posts_to_vectors(config, data, model):
     """Convert the text post to a vector
 
     :data df.read_csv(pre_processed_csv).values
@@ -82,8 +83,13 @@ def convert_posts_to_vectors(data, model):
     """
     print('Converting text data to vectors...')
 
+    N = len(data)
+    # Get number of samples to use from config if not -1
+    if config.num_samples != -1:
+        N = config.num_samples
+
     embedded_data = []
-    for idx in trange(len(data)):
+    for idx in trange(N):
         row = data[idx]
         post = row[1]
         mbti_type = row[2]
@@ -94,10 +100,6 @@ def convert_posts_to_vectors(data, model):
                 vec = model.wv[word]
                 sentence.append(vec)
         embedded_data.append([mbti_type, sentence])
-
-        # TODO: Remove this after finding better way to save data
-        if idx >= 2000:
-            break
 
     return embedded_data
 
@@ -115,7 +117,25 @@ def get_embeddings(model):
     return embedded_weights
 
 
-def word2vec(config):
+def get_code_data(code, embedding_data):
+    """Get data with label as binary specifying a specific personality type code."""
+    newdata = []
+    for row in embedding_data:
+        c = get_binary_for_code(code, row[0])
+        newdata.append([[c], row[1]])
+    return newdata
+
+
+def get_one_hot_data(embedding_data):
+    """Get data with label one-hot encoded for all possible classes."""
+    newdata = []
+    for row in embedding_data:
+        Y = one_hot_encode_type(row[0])
+        newdata.append([Y, row[1]])
+    return newdata
+
+
+def word2vec(config, code=ALL):
     """Create word2vec embeddings
 
     :config user configuration
@@ -123,25 +143,24 @@ def word2vec(config):
     print('\n--- Creating word embeddings')
 
     embedding_data = None
-    if os.path.isfile(config.embeddings_file) and not config.force_word2vec:
-        # Load data with word vectors from file
-        embedding_data = read_data(config.embeddings_file)
+    pre_data = pd.read_csv(config.pre_save_file).values
+    if os.path.isfile(config.embeddings_model) and not config.force_word2vec:
+        # Load model from file
+        model = load_word2vec(config.embeddings_model)
     else:
         # Train model
-        pre_data = pd.read_csv(config.pre_save_file).values
         words = extract_words(pre_data)
         model = create_word2vec_model(words, config)
 
         # Save model to disk
         model.save(config.embeddings_model)
 
-        # Create data with labels and word embeddings
-        embedding_data = convert_posts_to_vectors(pre_data, model)
+    # Create data with labels and word embeddings
+    embedding_data = convert_posts_to_vectors(config, pre_data, model)
 
-        # Save to disk
-        save_data(embedding_data, config.embeddings_file)
-
-    return embedding_data
+    if code == ALL:
+        return get_one_hot_data(embedding_data)
+    return get_code_data(code, embedding_data)
 
 
 def average_sentence_length(embedding_data):
@@ -151,6 +170,18 @@ def average_sentence_length(embedding_data):
         total_words += float(len(row[1]))
     return total_words / len(embedding_data)
 
+
+# SHIT DON'T WORK
+# def get_embeddings(config):
+#     """Returns data rows with embeddings from disk."""
+#     data = pd.HDFStore(config.embeddings_file)
+#     return data['data'].values
+
+# def save_embeddings(config, embedding_data):
+#     """Saves data rows with embeddings to disk."""
+#     x = pd.HDFStore(config.embeddings_file)
+#     x.append('data', pd.DataFrame(embedding_data))
+#     x.close()
 
 if __name__ == "__main__":
     config = get_config()
