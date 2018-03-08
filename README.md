@@ -79,7 +79,7 @@ Word2Vec:
 
 The format of the data can get a little confusing. Hopefully this clears things up.
 
-For the following, `N = number of rows (samples) we have**.
+For the following, `N = number of rows (samples) we have`.
 
 _Note: All filepaths are prefixed with the `data` directory._
 
@@ -99,7 +99,7 @@ The file is preprocessed by splitting each row into a new row for each individua
 
 ## Word2Vec
 
-This is the data that will be mainly used for training/testing. Multiple output types can be specified depending if are training to classify all 16 classes, or doing a binary classification for each of the 4 character codes.
+This is the data that will be mainly used for training/testing. Multiple output types can be specified depending if you are training to classify all 16 classes, or doing a binary classification for each of the 4 character codes.
 
 ### Input
 
@@ -118,23 +118,23 @@ The output will all be numbers, no strings will be present.
 
 For each row, the first element will be the label vector and the second element will be the sentence data.
 
+```
+row = [label, sentence]
+```
+
 #### Sentence
 
 The sentence data is a list of words vectors, so may be a different length for each row.
 
 #### Word Vector
 
-Each word vector is a vector of length 300.
+Each word vector is a vector of length `config.feature_size`, which defaults to 300.
 
 #### Label
 
 The label depends on the `code` option specified.
 
-**ALL***
-
-```
-row = [label, sentence]
-```
+**ALL**
 
 The label will be a length 16 vector which is one-hot encoded. You can use the `utils.one_hot_to_type` function to convert from a one-hot encoding to a personality type.
 
