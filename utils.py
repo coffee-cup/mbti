@@ -48,12 +48,12 @@ def get_char_for_binary(code, binary):
     return c[binary]
 
 
-def get_config():
+def get_config(return_unparsed=False):
     """Gets config and creates data_dir."""
     config, unparsed = parse_config()
 
     # If we have unparsed args, print usage and exit
-    if len(unparsed) > 0:
+    if len(unparsed) > 0 and not return_unparsed:
         print_usage()
         exit(1)
 
@@ -69,5 +69,8 @@ def get_config():
     # Create data_dir if it doesn't exist
     if not os.path.exists(config.data_dir):
         os.makedirs(config.data_dir)
+
+    if return_unparsed:
+        return config, unparsed
 
     return config

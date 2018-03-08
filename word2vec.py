@@ -30,6 +30,7 @@ def create_word2vec_model(data, config):
         min_count=config.min_words,
         window=config.distance_between_words,
         sample=1e-3,
+        sorted_vocab=1,
         iter=config.epochs)
     model.init_sims(replace=True)
 
