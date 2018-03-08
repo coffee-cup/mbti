@@ -8,4 +8,4 @@ if __name__ == '__main__':
     config = get_config()
 
     preprocess(config)
-    word2vec(config)
+    embedding_data = word2vec(config)

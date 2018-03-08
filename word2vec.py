@@ -125,7 +125,6 @@ def word2vec(config):
     embedding_data = None
     if os.path.isfile(config.embeddings_file) and not config.force_word2vec:
         # Load data with word vectors from file
-        print('Found saved data')
         embedding_data = read_data(config.embeddings_file)
     else:
         # Train model
