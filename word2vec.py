@@ -1,5 +1,6 @@
 import csv
 import os
+import random
 import re
 
 import numpy as np
@@ -89,6 +90,8 @@ def convert_posts_to_vectors(config, data, model):
     if config.num_samples != -1:
         N = config.num_samples
 
+    # Shuffle data
+    random.shuffle(data)
     embedded_data = []
     for idx in trange(N):
         row = data[idx]
@@ -99,8 +102,9 @@ def convert_posts_to_vectors(config, data, model):
         for word in post.split(' '):
             if word in model.wv.index2word:
                 vec = model.wv[word]
-                sentence.append(vec)
-        embedded_data.append([mbti_type, sentence])
+                sentence.append(vec.tolist())
+        if len(sentence) > 0:
+            embedded_data.append([mbti_type, sentence])
 
     return embedded_data
 

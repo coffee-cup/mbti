@@ -89,6 +89,27 @@ def preprocess(config):
     return df.values
 
 
+def get_count(posts, fn):
+    counts_dict = {}
+    for row in posts:
+        label = row[-1]
+        l = fn(label)
+        if counts_dict.get(l) is None:
+            counts_dict[l] = 1
+        else:
+            counts_dict[l] += 1
+
+    counts = []
+    counts = map(lambda x: (x[0], x[1]), counts_dict.items())
+    return sorted(counts, key=lambda t: -t[1])
+
+
+def print_counts(counts):
+    for t in counts:
+        print('{} {}'.format(t[0], t[1]))
+    print('')
+
+
 if __name__ == '__main__':
     config = get_config()
     posts = preprocess(config)
@@ -98,3 +119,20 @@ if __name__ == '__main__':
     print('{} Total rows'.format(len(posts)))
     print('Here are the first 2 rows')
     print(posts[0:2])
+
+    print('\nCount of labels for all 16 classes and each character\n')
+
+    print('All')
+    print_counts(get_count(posts, lambda x: x))
+
+    print('First')
+    print_counts(get_count(posts, lambda x: x[0]))
+
+    print('Second')
+    print_counts(get_count(posts, lambda x: x[1]))
+
+    print('Third')
+    print_counts(get_count(posts, lambda x: x[2]))
+
+    print('Fourth')
+    print_counts(get_count(posts, lambda x: x[3]))
