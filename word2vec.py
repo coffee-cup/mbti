@@ -123,7 +123,7 @@ def get_code_data(code, embedding_data):
     newdata = []
     for row in embedding_data:
         c = get_binary_for_code(code, row[0])
-        newdata.append([[c], row[1]])
+        newdata.append([row[1], [c]])
     return newdata
 
 
@@ -132,7 +132,7 @@ def get_one_hot_data(embedding_data):
     newdata = []
     for row in embedding_data:
         Y = one_hot_encode_type(row[0])
-        newdata.append([Y, row[1]])
+        newdata.append([row[1], Y])
     return newdata
 
 

@@ -116,10 +116,10 @@ embedding_data = word2vec(config, code=ALL) # Defaults to ALL
 
 The output will all be numbers, no strings will be present. 
 
-For each row, the first element will be the label vector and the second element will be the sentence data.
+For each row, the first element will be the sentence data and the second element will be the label vector.
 
 ```
-row = [label, sentence]
+row = [sentence, label]
 ```
 
 #### Sentence
