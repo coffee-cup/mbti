@@ -14,4 +14,4 @@ if __name__ == '__main__':
     model = Word2Vec.load(config.embeddings_model)
     print('Words similar to ' + word)
     for w, s in model.most_similar(word):
-        print('{:>10} {:.2f}%'.format(w, s * 100))
+        print('{:>15} {:.2f}%'.format(w, s * 100))
