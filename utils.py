@@ -28,7 +28,7 @@ def one_hot_encode_type(t):
     i = personality_types.index(t)
     Y = np.zeros(len(personality_types))
     Y[i] = 1
-    return Y
+    return Y.astype(int).tolist()
 
 
 def one_hot_to_type(Y):

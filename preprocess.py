@@ -105,8 +105,13 @@ def get_count(posts, fn):
 
 
 def print_counts(counts):
+    total = 0.0
     for t in counts:
-        print('{} {}'.format(t[0], t[1]))
+        total += t[1]
+
+    for t in counts:
+        percent = (t[1] / total) * 100
+        print('{} {} {:.2f}%'.format(t[0], t[1], percent))
     print('')
 
 

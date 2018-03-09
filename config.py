@@ -22,6 +22,12 @@ parser.add_argument(
     default='./data',
     help='Directory to save/read all data files from')
 
+parser.add_argument(
+    '--use_cuda',
+    type=str2bool,
+    default=False,
+    help='Whether or not to use cuda for PyTorch')
+
 # Arguments for preprocessing
 preprocessing_arg = add_argument_group('Preprocessing')
 
