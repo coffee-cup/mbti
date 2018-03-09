@@ -108,6 +108,14 @@ word2vec_arg.add_argument(
     default=-1,
     help='Number of samples to return from word2vec. -1 for all samples')
 
+lstm_arg = add_argument_group('LSTM')
+
+lstm_arg.add_argument(
+    '--batch_size',
+    type=int,
+    default=1000,
+    help='Number of samples to use per iteration when training lstm')
+
 
 def parse_config():
     config, unparsed = parser.parse_known_args()

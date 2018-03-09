@@ -1,5 +1,7 @@
+import pickle
 import random
 
+import numpy as np
 import torch
 import torch.autograd as autograd
 import torch.nn as nn
@@ -7,7 +9,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 
-from utils import FIRST, FOURTH, SECOND, THIRD, get_config
+from utils import FIRST, FOURTH, SECOND, THIRD, codes, get_config
 from word2vec import word2vec
 
 random.seed(1)
@@ -52,6 +54,13 @@ def get_accuracy(truth, pred):
     return right / len(truth)
 
 
+def np_sentence_to_list(sent):
+    newsent = []
+    for word in sent:
+        newsent.append(word.tolist())
+    return newsent
+
+
 def train_epoch(config, model, data, loss_fn, optimizer, epoch):
     model.train()
 
@@ -61,8 +70,10 @@ def train_epoch(config, model, data, loss_fn, optimizer, epoch):
     pred_res = []
     batch_sent = []
 
-    for sent, label in data:
-        sent = Variable(torch.Tensor(sent))
+    random.shuffle(data)
+    for i in range(config.batch_size):
+        sent, label = data[i]
+        sent = Variable(torch.Tensor(np_sentence_to_list(sent)))
         label = Variable(torch.LongTensor(label))
 
         truth_res.append(label.data[0])
@@ -79,7 +90,7 @@ def train_epoch(config, model, data, loss_fn, optimizer, epoch):
         # pred = pred.view([model.label_size])
         # print(pred)
 
-        model.zero_grad()
+        optimizer.zero_grad()
         loss = loss_fn(pred, label)
         avg_loss += loss.data[0]
         count += 1
@@ -95,15 +106,18 @@ def train_epoch(config, model, data, loss_fn, optimizer, epoch):
     acc = get_accuracy(truth_res, pred_res)
     print('Epoch: {} Avg Loss: {} Acc: {:.2f}%'.format(epoch, avg_loss,
                                                        acc * 100))
+    return avg_loss, acc
 
 
-def evaluate(model, data):
+def evaluate(config, model, data):
     model.eval()
     truth_res = []
     pred_res = []
 
-    for sent, label in data:
-        sent = Variable(torch.Tensor(sent))
+    random.shuffle(data)
+    for i in range(config.batch_size):
+        sent, label = data[i]
+        sent = Variable(torch.Tensor(np_sentence_to_list(sent)))
         label = Variable(torch.LongTensor(label))
 
         truth_res.append(label.data[0])
@@ -117,7 +131,7 @@ def evaluate(model, data):
     return acc
 
 
-def train(config, data):
+def train(config, data, code):
     random.shuffle(data)
     num_tr = int(len(data) * 0.8)
 
@@ -133,8 +147,8 @@ def train(config, data):
     label_size = 2
 
     EMBEDDING_DIM = config.feature_size
-    HIDDEN_DIM = 50
-    EPOCH = 100
+    HIDDEN_DIM = 128
+    EPOCH = 50
     best_acc = 0.0
     model = LSTMClassifier(
         config,
@@ -142,21 +156,48 @@ def train(config, data):
         hidden_dim=HIDDEN_DIM,
         label_size=label_size)
 
-    loss_function = nn.NLLLoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    # loss_function = nn.NLLLoss()
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=1e-4)
+
+    losses = []
+    train_accs = []
+    test_accs = []
 
     for i in range(EPOCH):
         random.shuffle(train_data)
         print('Epoch: {}'.format(i))
-        train_epoch(config, model, train_data, loss_function, optimizer, i)
+        train_loss, train_acc = train_epoch(config, model, train_data, loss_fn,
+                                            optimizer, i)
+        losses.append(train_loss)
+        train_accs.append(train_acc)
 
-        acc = evaluate(model, test_data)
+        acc = evaluate(config, model, test_data)
+        test_accs.append(acc)
         print('Test Acc: {:.2f}%'.format(acc * 100))
         print('')
+
+        if acc >= best_acc:
+            best_acc = acc
+
+    save_data = {
+        'best_acc': best_acc,
+        'losses': losses,
+        'train_accs': train_accs,
+        'test_accs': test_accs,
+        'personality_char': code + 1,
+        'letters': codes[code]
+    }
+
+    print('Best Acc: {:.2f}%'.format(best_acc * 100))
+
+    with open('lstm_save', 'wb') as f:
+        pickle.dump(save_data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == '__main__':
     config = get_config()
 
-    embedding_data = word2vec(config, code=THIRD)
-    train(config, embedding_data)
+    code = FIRST
+    embedding_data = word2vec(config, code=code)
+    train(config, embedding_data, code)

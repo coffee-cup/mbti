@@ -102,7 +102,7 @@ def convert_posts_to_vectors(config, data, model):
         for word in post.split(' '):
             if word in model.wv.index2word:
                 vec = model.wv[word]
-                sentence.append(vec.tolist())
+                sentence.append(vec)
         if len(sentence) > 0:
             embedded_data.append([mbti_type, sentence])
 
