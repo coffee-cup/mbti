@@ -32,7 +32,7 @@ def one_hot_encode_type(t):
 
 
 def one_hot_to_type(Y):
-    i = np.where(Y == 1)[0][0]
+    i = np.where(np.array(Y) == 1)[0][0]
     return personality_types[i]
 
 

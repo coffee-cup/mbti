@@ -13,10 +13,10 @@ if __name__ == '__main__':
     # 16 classes
     embedding_data = word2vec(config, code=ALL)
     example = embedding_data[10]
-    print('Label is {}'.format(one_hot_to_type(example[0])))
+    print('Label is {}'.format(one_hot_to_type(example[1])))
 
     # Binary class (third class)
     # code = FOURTH
     # embedding_data = word2vec(config, code=code)
     # example = embedding_data[10]
-    # print('Binary label is {}'.format(get_char_for_binary(code, example[0])))
+    # print('Binary label is {}'.format(get_char_for_binary(code, example[1])))
