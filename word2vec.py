@@ -2,7 +2,7 @@ import csv
 import os
 import random
 import re
-
+import pickle
 import numpy as np
 import pandas as pd
 from gensim.models import Word2Vec, word2vec
@@ -164,8 +164,10 @@ def word2vec(config, code=ALL):
     embedding_data = convert_posts_to_vectors(config, pre_data, model)
 
     if code == ALL:
-        return get_one_hot_data(embedding_data)
-    return get_code_data(code, embedding_data)
+
+        embedding_data = get_one_hot_data(embedding_data)
+        return batch_embeddings(embedding_data)
+    return batch_embeddings(get_code_data(code, embedding_data))
 
 
 def average_sentence_length(embedding_data):
@@ -175,7 +177,25 @@ def average_sentence_length(embedding_data):
         total_words += float(len(row[1]))
     return total_words / len(embedding_data)
 
+def batch_embeddings(embeddings):
+    batched_embeddings = []
+    lengths = set()
+    for row in embeddings:
+        lengths.add(len(row[0]))
+    max_length = max(lengths)
+    #min_length = len(min(l[0] for l in embeddings))
+    #print(max_length)
+    for i in xrange(max_length+1):
+        temp = []
+        for row in embeddings:
 
+            if(len(row[0]) == i):
+                temp.append(row)
+        if(len(temp) != 0):
+            batched_embeddings.append(temp)
+            #print(len(temp))
+
+    return batched_embeddings
 # SHIT DON'T WORK
 # def get_embeddings(config):
 #     """Returns data rows with embeddings from disk."""
@@ -192,7 +212,8 @@ if __name__ == "__main__":
     config = get_config()
 
     embedding_data = word2vec(config)
-
+    batched_embeddings = batch_embeddings(embedding_data)
+    print(len(embedding_data), len(batched_embeddings))
     print('Created word embeddings')
 
     print('Rows: {}'.format(len(embedding_data)))

@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
+from sklearn.model_selection import train_test_split
 
 from utils import FIRST, FOURTH, SECOND, THIRD, codes, get_config
 from word2vec import word2vec
@@ -53,15 +54,18 @@ def get_accuracy(truth, pred):
             right += 1.0
     return right / len(truth)
 
-
-def np_sentence_to_list(sent):
+#converts from numpy array to list
+def np_sentence_to_list(L_sent):
     newsent = []
-    for word in sent:
-        newsent.append(word.tolist())
+    for sentance in L_sent:
+        temp = []
+        for word in sentance:
+            temp.append(word.tolist())
+        newsent.append(temp)
     return newsent
 
 
-def train_epoch(config, model, data, loss_fn, optimizer, epoch):
+def train_epoch(config, model, X, y, loss_fn, optimizer, epoch):
     model.train()
 
     avg_loss = 0.0
@@ -70,11 +74,11 @@ def train_epoch(config, model, data, loss_fn, optimizer, epoch):
     pred_res = []
     batch_sent = []
 
-    random.shuffle(data)
-    for i in range(config.batch_size):
-        sent, label = data[i]
-        sent = Variable(torch.Tensor(np_sentence_to_list(sent)))
-        label = Variable(torch.LongTensor(label))
+    #random.shuffle(data)
+    for i in range(len(X)):
+        #sent, label = data[i]
+        sent = Variable(torch.Tensor(np_sentence_to_list(X[i])))
+        label = Variable(torch.LongTensor(y[i]))
 
         truth_res.append(label.data[0])
         model.hidden = model.init_hidden()
@@ -109,16 +113,17 @@ def train_epoch(config, model, data, loss_fn, optimizer, epoch):
     return avg_loss, acc
 
 
-def evaluate(config, model, data):
+def evaluate(config, model, X, y):
     model.eval()
     truth_res = []
     pred_res = []
-
-    random.shuffle(data)
-    for i in range(config.batch_size):
-        sent, label = data[i]
-        sent = Variable(torch.Tensor(np_sentence_to_list(sent)))
-        label = Variable(torch.LongTensor(label))
+    test_data = list(zip(X, y))
+    random.shuffle(test_data)
+    X, y = zip(*train_data)
+    for i in range(len(X)):
+        #sent, label = data[i]
+        sent = Variable(torch.Tensor(np_sentence_to_list(X[i])))
+        label = Variable(torch.LongTensor(y[i]))
 
         truth_res.append(label.data[0])
         model.hidden = model.init_hidden()
@@ -130,19 +135,36 @@ def evaluate(config, model, data):
     acc = get_accuracy(truth_res, pred_res)
     return acc
 
-
+#if doing batched row in data is actually a list of all the sentences of a particular length, largest list is of length 39000,
 def train(config, data, code):
-    random.shuffle(data)
+    #random.shuffle(data)
     num_tr = int(len(data) * 0.8)
+    X = []
+    Y = []
+    for row in data:
+        random.shuffle(row)
+        #print(row)
+        X.append([innerrow[0] for innerrow in row])
+        Y.append([innerrow[1] for innerrow in row])
+    #X = [row[0] for row in data]
+    #y = [row[1] for row in data]
 
-    X = [row[0] for row in data]
-    y = [row[1] for row in data]
+    X_train = []
+    X_test = []
+    y_train = []
+    y_test = []
+    for i in xrange(len(X)):
+          X_train_temp, X_test_temp, y_train_temp, y_test_temp = train_test_split(X[i], Y[i], test_size=0.2, random_state=42)
+          X_train.append(X_train_temp)
+          X_test.append(X_test_temp)
+          y_train.append(y_train_temp)
+          y_test.append(y_test_temp)
 
-    train_data = data[:num_tr]
-    test_data = data[num_tr:]
+    #train_data = data[:num_tr]
+    #test_data = data[num_tr:]
 
-    print('{} training samples, {} testing samples'.format(
-        len(train_data), len(test_data)))
+    #print('{} training samples, {} testing samples'.format(
+        #len(train_data), len(test_data)))
 
     label_size = 2
 
@@ -165,15 +187,18 @@ def train(config, data, code):
     test_accs = []
 
     for i in range(EPOCH):
+        train_data = list(zip(X_train, y_train))
         random.shuffle(train_data)
-        print('Epoch: {}'.format(i))
-        train_loss, train_acc = train_epoch(config, model, train_data, loss_fn,
+        X_train, y_train = zip(*train_data)
+
+        train_loss, train_acc = train_epoch(config, model, X_train, y_train, loss_fn,
                                             optimizer, i)
         losses.append(train_loss)
         train_accs.append(train_acc)
 
-        acc = evaluate(config, model, test_data)
+        acc = evaluate(config, model, X_test, y_test)
         test_accs.append(acc)
+        print("epoch #: {}".format(i))
         print('Test Acc: {:.2f}%'.format(acc * 100))
         print('')
 
