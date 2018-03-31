@@ -7,8 +7,8 @@ import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.autograd import Variable
 from sklearn.model_selection import train_test_split
+from torch.autograd import Variable
 
 from utils import FIRST, FOURTH, SECOND, THIRD, codes, get_config
 from word2vec import word2vec
@@ -53,6 +53,7 @@ def get_accuracy(truth, pred):
         if truth[i] == pred[i]:
             right += 1.0
     return right / len(truth)
+
 
 #converts from numpy array to list
 def np_sentence_to_list(L_sent):
@@ -135,6 +136,7 @@ def evaluate(config, model, X, y):
     acc = get_accuracy(truth_res, pred_res)
     return acc
 
+
 #if doing batched row in data is actually a list of all the sentences of a particular length, largest list is of length 39000,
 def train(config, data, code):
     #random.shuffle(data)
@@ -154,17 +156,18 @@ def train(config, data, code):
     y_train = []
     y_test = []
     for i in xrange(len(X)):
-          X_train_temp, X_test_temp, y_train_temp, y_test_temp = train_test_split(X[i], Y[i], test_size=0.2, random_state=42)
-          X_train.append(X_train_temp)
-          X_test.append(X_test_temp)
-          y_train.append(y_train_temp)
-          y_test.append(y_test_temp)
+        X_train_temp, X_test_temp, y_train_temp, y_test_temp = train_test_split(
+            X[i], Y[i], test_size=0.2, random_state=42)
+        X_train.append(X_train_temp)
+        X_test.append(X_test_temp)
+        y_train.append(y_train_temp)
+        y_test.append(y_test_temp)
 
     #train_data = data[:num_tr]
     #test_data = data[num_tr:]
 
     #print('{} training samples, {} testing samples'.format(
-        #len(train_data), len(test_data)))
+    #len(train_data), len(test_data)))
 
     label_size = 2
 
@@ -191,8 +194,8 @@ def train(config, data, code):
         random.shuffle(train_data)
         X_train, y_train = zip(*train_data)
 
-        train_loss, train_acc = train_epoch(config, model, X_train, y_train, loss_fn,
-                                            optimizer, i)
+        train_loss, train_acc = train_epoch(config, model, X_train, y_train,
+                                            loss_fn, optimizer, i)
         losses.append(train_loss)
         train_accs.append(train_acc)
 
