@@ -1,8 +1,9 @@
 import csv
 import os
+import pickle
 import random
 import re
-import pickle
+
 import numpy as np
 import pandas as pd
 from gensim.models import Word2Vec, word2vec
@@ -140,7 +141,7 @@ def get_one_hot_data(embedding_data):
     return newdata
 
 
-def word2vec(config, code=ALL):
+def word2vec(config, code=ALL, batch=True):
     """Create word2vec embeddings
 
     :config user configuration
@@ -164,10 +165,11 @@ def word2vec(config, code=ALL):
     embedding_data = convert_posts_to_vectors(config, pre_data, model)
 
     if code == ALL:
-
         embedding_data = get_one_hot_data(embedding_data)
-        return batch_embeddings(embedding_data)
-    return batch_embeddings(get_code_data(code, embedding_data))
+    else:
+        embedding_data = get_code_data(code, embedding_data)
+
+    return batch_embeddings(embedding_data) if batch else embedding_data
 
 
 def average_sentence_length(embedding_data):
@@ -177,6 +179,7 @@ def average_sentence_length(embedding_data):
         total_words += float(len(row[1]))
     return total_words / len(embedding_data)
 
+
 def batch_embeddings(embeddings):
     batched_embeddings = []
     lengths = set()
@@ -185,17 +188,19 @@ def batch_embeddings(embeddings):
     max_length = max(lengths)
     #min_length = len(min(l[0] for l in embeddings))
     #print(max_length)
-    for i in xrange(max_length+1):
+    for i in range(0, max_length + 1):
         temp = []
         for row in embeddings:
 
-            if(len(row[0]) == i):
+            if (len(row[0]) == i):
                 temp.append(row)
-        if(len(temp) != 0):
+        if (len(temp) != 0):
             batched_embeddings.append(temp)
             #print(len(temp))
 
     return batched_embeddings
+
+
 # SHIT DON'T WORK
 # def get_embeddings(config):
 #     """Returns data rows with embeddings from disk."""
