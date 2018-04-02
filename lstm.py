@@ -9,12 +9,25 @@ import torch.nn.functional as F
 import torch.optim as optim
 from sklearn.model_selection import train_test_split
 from torch.autograd import Variable
+from torch.utils.data import DataLoader, Dataset
 
 from utils import FIRST, FOURTH, SECOND, THIRD, codes, get_config
 from word2vec import word2vec
 
-random.seed(1)
-torch.manual_seed(1)
+# random.seed(1)
+# torch.manual_seed(1)
+
+
+class MbtiDataset(Dataset):
+    def __init__(self, X, y):
+        self.X = X
+        self.y = y
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, idx):
+        return self.X[idx], self.y[idx]
 
 
 class LSTMClassifier(nn.Module):
@@ -39,7 +52,9 @@ class LSTMClassifier(nn.Module):
         return (h1, h2)
 
     def forward(self, embeds):
-        x = embeds.view(embeds.size(0), 1, -1)
+        x = embeds
+        # print('embeds size {}'.format(embeds.size()))
+        # x = embeds.view(embeds.size(0), 1, -1)
         lstm_out, self.hidden = self.lstm(x, self.hidden)
         y = self.hidden2label(lstm_out[-1])
         log_probs = F.log_softmax(y)
@@ -55,81 +70,61 @@ def get_accuracy(truth, pred):
     return right / len(truth)
 
 
-#converts from numpy array to list
-def np_sentence_to_list(L_sent):
-    newsent = []
-    for sentance in L_sent:
-        temp = []
-        for word in sentance:
-            temp.append(word.tolist())
-        newsent.append(temp)
-    return newsent
-
-
-def train_epoch(config, model, X, y, loss_fn, optimizer, epoch):
+def train_epoch(model, dataloader, loss_fn, optimizer, epoch):
+    '''Train a single epoch.'''
     model.train()
 
     avg_loss = 0.0
     count = 0
     truth_res = []
     pred_res = []
-    batch_sent = []
 
-    #random.shuffle(data)
-    for i in range(len(X)):
-        #sent, label = data[i]
-        sent = Variable(torch.Tensor(np_sentence_to_list(X[i])))
-        label = Variable(torch.LongTensor(y[i]))
+    for i_batch, sample_batched in enumerate(dataloader):
+        inputs, labels = sample_batched
+        inputs = Variable(torch.stack(inputs))
+        labels = Variable(torch.stack(labels)).view(-1)
 
-        truth_res.append(label.data[0])
+        truth_res.append(labels.data[0])
         model.hidden = model.init_hidden()
 
-        pred = model(sent)
+        pred = model(inputs)
         pred_label = pred.data.max(1)[1].numpy()[0]
         pred_res.append(pred_label)
 
-        # print('Pred: {} Actual: {}'.format(pred_label, label.data[0]))
-        # print(pred.data[0].numpy())
-        # print('')
-
-        # pred = pred.view([model.label_size])
-        # print(pred)
-
         optimizer.zero_grad()
-        loss = loss_fn(pred, label)
+        loss = loss_fn(pred, labels)
         avg_loss += loss.data[0]
         count += 1
 
         if count % 100 == 0:
-            print('\tEpoch: {} Iteration: {} Loss: {}'.format(
-                epoch, count, loss.data[0]))
+            print('\tBatch: {} Iteration: {} Loss: {}'.format(
+                i_batch, count, loss.data[0]))
 
         loss.backward()
         optimizer.step()
 
-    avg_loss /= len(data)
+    avg_loss /= count
     acc = get_accuracy(truth_res, pred_res)
     print('Epoch: {} Avg Loss: {} Acc: {:.2f}%'.format(epoch, avg_loss,
                                                        acc * 100))
     return avg_loss, acc
 
 
-def evaluate(config, model, X, y):
+def evaluate(model, dataloader):
     model.eval()
+
     truth_res = []
     pred_res = []
-    test_data = list(zip(X, y))
-    random.shuffle(test_data)
-    X, y = zip(*train_data)
-    for i in range(len(X)):
-        #sent, label = data[i]
-        sent = Variable(torch.Tensor(np_sentence_to_list(X[i])))
-        label = Variable(torch.LongTensor(y[i]))
 
-        truth_res.append(label.data[0])
+    for i_batch, sample_batched in enumerate(dataloader):
+        inputs, labels = sample_batched
+        inputs = Variable(torch.stack(inputs))
+        labels = Variable(torch.stack(labels)).view(-1)
+
+        truth_res.append(labels.data[0])
         model.hidden = model.init_hidden()
 
-        pred = model(sent)
+        pred = model(inputs)
         pred_label = pred.data.max(1)[1].numpy()[0]
         pred_res.append(pred_label)
 
@@ -137,75 +132,60 @@ def evaluate(config, model, X, y):
     return acc
 
 
-#if doing batched row in data is actually a list of all the sentences of a particular length, largest list is of length 39000,
-def train(config, data, code):
-    #random.shuffle(data)
-    num_tr = int(len(data) * 0.8)
-    X = []
-    Y = []
-    for row in data:
-        random.shuffle(row)
-        #print(row)
-        X.append([innerrow[0] for innerrow in row])
-        Y.append([innerrow[1] for innerrow in row])
-    #X = [row[0] for row in data]
-    #y = [row[1] for row in data]
+def lstm(config, embedding_data, code):
+    X = [row[0] for row in embedding_data]
+    y = [row[1] for row in embedding_data]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
-    X_train = []
-    X_test = []
-    y_train = []
-    y_test = []
-    for i in xrange(len(X)):
-        X_train_temp, X_test_temp, y_train_temp, y_test_temp = train_test_split(
-            X[i], Y[i], test_size=0.2, random_state=42)
-        X_train.append(X_train_temp)
-        X_test.append(X_test_temp)
-        y_train.append(y_train_temp)
-        y_test.append(y_test_temp)
+    train_dataset = MbtiDataset(X_train, y_train)
+    train_dataloader = DataLoader(
+        train_dataset,
+        batch_size=config.batch_size,
+        shuffle=True,
+        num_workers=4)
 
-    #train_data = data[:num_tr]
-    #test_data = data[num_tr:]
-
-    #print('{} training samples, {} testing samples'.format(
-    #len(train_data), len(test_data)))
+    test_dataset = MbtiDataset(X_test, y_test)
+    test_dataloader = DataLoader(
+        test_dataset,
+        batch_size=config.batch_size,
+        shuffle=True,
+        num_workers=4)
 
     label_size = 2
-
     EMBEDDING_DIM = config.feature_size
     HIDDEN_DIM = 128
-    EPOCH = 50
+    EPOCH = 10
     best_acc = 0.0
+
     model = LSTMClassifier(
         config,
         embedding_dim=EMBEDDING_DIM,
         hidden_dim=HIDDEN_DIM,
         label_size=label_size)
 
-    # loss_function = nn.NLLLoss()
+    parameters = filter(lambda p: p.requires_grad, model.parameters())
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-4)
+    optimizer = optim.Adam(parameters, lr=1e-4)
 
     losses = []
     train_accs = []
     test_accs = []
 
     for i in range(EPOCH):
-        train_data = list(zip(X_train, y_train))
-        random.shuffle(train_data)
-        X_train, y_train = zip(*train_data)
+        avg_loss = 0.0
 
-        train_loss, train_acc = train_epoch(config, model, X_train, y_train,
-                                            loss_fn, optimizer, i)
+        train_loss, train_acc = train_epoch(model, train_dataloader, loss_fn,
+                                            optimizer, i)
         losses.append(train_loss)
         train_accs.append(train_acc)
 
-        acc = evaluate(config, model, X_test, y_test)
+        acc = evaluate(model, test_dataloader)
         test_accs.append(acc)
-        print("epoch #: {}".format(i))
-        print('Test Acc: {:.2f}%'.format(acc * 100))
+
+        print('Epoch #{} Test Acc: {:.2f}%'.format(i, acc * 100))
         print('')
 
-        if acc >= best_acc:
+        if acc > best_acc:
             best_acc = acc
 
     save_data = {
@@ -227,5 +207,5 @@ if __name__ == '__main__':
     config = get_config()
 
     code = FIRST
-    embedding_data = word2vec(config, code=code)
-    train(config, embedding_data, code)
+    embedding_data = word2vec(config, code=code, batch=False)
+    lstm(config, embedding_data, code)
