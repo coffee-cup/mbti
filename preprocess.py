@@ -24,7 +24,7 @@ reg_spaces = re.compile('\s+', flags=re.MULTILINE)
 
 def filter_text(post):
     """Decide whether or not we want to use the post."""
-    return len(post) > 0
+    return len(post) > 5
 
 
 def preprocess_text(post):

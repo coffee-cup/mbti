@@ -32,13 +32,12 @@ class MbtiDataset(Dataset):
 
 class LSTMClassifier(nn.Module):
     def __init__(self, config, embedding_dim, hidden_dim, label_size):
-        print('label size {}'.format(label_size))
         super(LSTMClassifier, self).__init__()
         self.config = config
         self.label_size = label_size
         self.hidden_dim = hidden_dim
         # self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, dropout=0.1)
         self.hidden2label = nn.Linear(hidden_dim, label_size)
         self.hidden = self.init_hidden()
 
@@ -76,6 +75,8 @@ def train_epoch(model, dataloader, loss_fn, optimizer, epoch):
 
     avg_loss = 0.0
     count = 0
+    total_samples = 0
+    correct = 0.0
     truth_res = []
     pred_res = []
 
@@ -84,27 +85,32 @@ def train_epoch(model, dataloader, loss_fn, optimizer, epoch):
         inputs = Variable(torch.stack(inputs))
         labels = Variable(torch.stack(labels)).view(-1)
 
-        truth_res.append(labels.data[0])
+        # truth_res.append(labels.data[0])
         model.hidden = model.init_hidden()
 
-        pred = model(inputs)
-        pred_label = pred.data.max(1)[1].numpy()[0]
-        pred_res.append(pred_label)
+        output = model(inputs)
+        _, predict = torch.max(output, 1)
+
+        correct += (predict.data.numpy() == labels.data.numpy()).sum()
+        total_samples += labels.size()[0]
+        # pred_label = pred.data.max(1)[1].numpy()[0]
+        # pred_res.append(pred_label)
 
         optimizer.zero_grad()
-        loss = loss_fn(pred, labels)
+        loss = loss_fn(output, labels)
         avg_loss += loss.data[0]
         count += 1
 
         if count % 100 == 0:
             print('\tBatch: {} Iteration: {} Loss: {}'.format(
-                i_batch, count, loss.data[0]))
+                epoch, count, loss.data[0]))
 
         loss.backward()
         optimizer.step()
 
     avg_loss /= count
-    acc = get_accuracy(truth_res, pred_res)
+    acc = correct / total_samples
+    # acc = get_accuracy(truth_res, pred_res)
     print('Epoch: {} Avg Loss: {} Acc: {:.2f}%'.format(epoch, avg_loss,
                                                        acc * 100))
     return avg_loss, acc
@@ -116,19 +122,22 @@ def evaluate(model, dataloader):
     truth_res = []
     pred_res = []
 
+    correct = 0.0
+    total_samples = 0
+
     for i_batch, sample_batched in enumerate(dataloader):
         inputs, labels = sample_batched
         inputs = Variable(torch.stack(inputs))
         labels = Variable(torch.stack(labels)).view(-1)
 
-        truth_res.append(labels.data[0])
         model.hidden = model.init_hidden()
+        output = model(inputs)
 
-        pred = model(inputs)
-        pred_label = pred.data.max(1)[1].numpy()[0]
-        pred_res.append(pred_label)
+        _, predict = torch.max(output, 1)
+        correct += (predict.data.numpy() == labels.data.numpy()).sum()
+        total_samples += labels.size()[0]
 
-    acc = get_accuracy(truth_res, pred_res)
+    acc = correct / total_samples
     return acc
 
 
@@ -154,7 +163,6 @@ def lstm(config, embedding_data, code):
     label_size = 2
     EMBEDDING_DIM = config.feature_size
     HIDDEN_DIM = 128
-    EPOCH = 10
     best_acc = 0.0
 
     model = LSTMClassifier(
@@ -171,7 +179,8 @@ def lstm(config, embedding_data, code):
     train_accs = []
     test_accs = []
 
-    for i in range(EPOCH):
+    best_model = None
+    for i in range(config.epochs):
         avg_loss = 0.0
 
         train_loss, train_acc = train_epoch(model, train_dataloader, loss_fn,
@@ -187,6 +196,7 @@ def lstm(config, embedding_data, code):
 
         if acc > best_acc:
             best_acc = acc
+            best_model = model.state_dict()
 
     save_data = {
         'best_acc': best_acc,
@@ -199,13 +209,18 @@ def lstm(config, embedding_data, code):
 
     print('Best Acc: {:.2f}%'.format(best_acc * 100))
 
-    with open('lstm_save', 'wb') as f:
+    # Save the best model
+    torch.save(best_model, 'saves/{}_model'.format(code))
+
+    # Save the results
+    filename = 'results/{}_save'.format(code)
+    with open(filename, 'wb') as f:
         pickle.dump(save_data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == '__main__':
     config = get_config()
 
-    code = FIRST
+    code = THIRD
     embedding_data = word2vec(config, code=code, batch=False)
     lstm(config, embedding_data, code)
