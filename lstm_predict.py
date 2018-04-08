@@ -10,10 +10,10 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 
-from config import parse_config
 from lstm import LSTMClassifier, MbtiDataset
 from preprocess import preprocess_text
-from utils import FIRST, FOURTH, SECOND, THIRD, codes, get_char_for_binary
+from utils import (FIRST, FOURTH, SECOND, THIRD, codes, get_char_for_binary,
+                   get_config)
 from word2vec import load_word2vec, word2vec
 
 
@@ -63,14 +63,20 @@ def predict(config, text, code, model=None):
 if __name__ == '__main__':
     config = get_config()
 
+    # Python 2/3 input
+    try:
+        input = raw_input
+    except NameError:
+        pass
+
     if sys.stdin.isatty():
-        text = raw_input('Enter some text: ')
+        text = input('Enter some text: ')
     else:
         text = sys.stdin.read()
 
     personality = ''
     codes = [FIRST, SECOND, THIRD, FOURTH]
     for code in codes:
-        personality += predict(code, text)
+        personality += predict(config, text, code)
 
     print('Prediction is {}'.format(personality))
