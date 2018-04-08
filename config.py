@@ -113,7 +113,7 @@ lstm_arg = add_argument_group('LSTM')
 lstm_arg.add_argument(
     '--batch_size',
     type=int,
-    default=1000,
+    default=32,
     help='Number of samples to use per iteration when training lstm')
 
 
