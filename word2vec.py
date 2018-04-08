@@ -6,7 +6,7 @@ import re
 
 import numpy as np
 import pandas as pd
-from gensim.models import Word2Vec, word2vec
+from gensim.models import Word2Vec
 
 from tqdm import trange
 from utils import (ALL, FIRST, FOURTH, SECOND, THIRD, get_binary_for_code,
@@ -141,15 +141,16 @@ def get_one_hot_data(embedding_data):
     return newdata
 
 
-def word2vec(config, code=ALL, batch=True):
+def word2vec(config, code=ALL, batch=True, pre_data=None):
     """Create word2vec embeddings
 
     :config user configuration
     """
     print('\n--- Creating word embeddings')
 
+    if pre_data is None:
+        pre_data = pd.read_csv(config.pre_save_file).values
     embedding_data = None
-    pre_data = pd.read_csv(config.pre_save_file).values
     if os.path.isfile(config.embeddings_model) and not config.force_word2vec:
         # Load model from file
         model = load_word2vec(config.embeddings_model)

@@ -2,11 +2,13 @@ import pickle
 import random
 
 import numpy as np
+import pandas as pd
 import torch
 import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from sklearn.metrics import precision_recall_fscore_support
 from sklearn.model_selection import train_test_split
 from torch.autograd import Variable
 from torch.utils.data import DataLoader, Dataset
@@ -37,7 +39,7 @@ class LSTMClassifier(nn.Module):
         self.label_size = label_size
         self.hidden_dim = hidden_dim
         # self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, dropout=0.1)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, dropout=0.2)
         self.hidden2label = nn.Linear(hidden_dim, label_size)
         self.hidden = self.init_hidden()
 
@@ -58,15 +60,6 @@ class LSTMClassifier(nn.Module):
         y = self.hidden2label(lstm_out[-1])
         log_probs = F.log_softmax(y)
         return log_probs
-
-
-def get_accuracy(truth, pred):
-    assert len(truth) == len(pred)
-    right = 0
-    for i in range(len(truth)):
-        if truth[i] == pred[i]:
-            right += 1.0
-    return right / len(truth)
 
 
 def train_epoch(model, dataloader, loss_fn, optimizer, epoch):
@@ -102,8 +95,8 @@ def train_epoch(model, dataloader, loss_fn, optimizer, epoch):
         count += 1
 
         if count % 100 == 0:
-            print('\tBatch: {} Iteration: {} Loss: {}'.format(
-                epoch, count, loss.data[0]))
+            print('\tIteration: {} Loss: {}'.format(epoch, count,
+                                                    loss.data[0]))
 
         loss.backward()
         optimizer.step()
@@ -137,14 +130,50 @@ def evaluate(model, dataloader):
         correct += (predict.data.numpy() == labels.data.numpy()).sum()
         total_samples += labels.size()[0]
 
+        truth_res += labels.data.numpy().tolist()
+        pred_res += predict.data.numpy().tolist()
+
     acc = correct / total_samples
-    return acc
+    metrics = precision_recall_fscore_support(
+        truth_res, pred_res, average='micro')
+    return acc, metrics
+
+
+def evenly_distribute(X, y):
+    counts = [0, 0]
+
+    for l in y:
+        counts[l[0]] += 1
+
+    new_X = []
+    new_y = []
+    min_count = min(counts[0], counts[1])
+    print('Min sample count: {}'.format(min_count))
+
+    new_counts = [0, 0]
+    for i in range(0, len(X)):
+        l = y[i][0]
+        if new_counts[l] <= min_count:
+            new_X.append(X[i])
+            new_y.append(y[i])
+            new_counts[l] += 1
+
+        if new_counts[0] >= min_count and new_counts[1] >= min_count:
+            break
+
+    return new_X, new_y
 
 
 def lstm(config, embedding_data, code):
     X = [row[0] for row in embedding_data]
     y = [row[1] for row in embedding_data]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+    # Evenly distribute across classes
+    X, y = evenly_distribute(X, y)
+
+    print('Total samples: {}'.format(len(X)))
+
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2)
 
     train_dataset = MbtiDataset(X_train, y_train)
     train_dataloader = DataLoader(
@@ -153,7 +182,7 @@ def lstm(config, embedding_data, code):
         shuffle=True,
         num_workers=4)
 
-    test_dataset = MbtiDataset(X_test, y_test)
+    test_dataset = MbtiDataset(X_val, y_val)
     test_dataloader = DataLoader(
         test_dataset,
         batch_size=config.batch_size,
@@ -173,13 +202,14 @@ def lstm(config, embedding_data, code):
 
     parameters = filter(lambda p: p.requires_grad, model.parameters())
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(parameters, lr=1e-4)
+    optimizer = optim.Adam(parameters, lr=1e-3)
 
     losses = []
     train_accs = []
     test_accs = []
 
     best_model = None
+    best_metrics = None
     for i in range(config.epochs):
         avg_loss = 0.0
 
@@ -188,18 +218,20 @@ def lstm(config, embedding_data, code):
         losses.append(train_loss)
         train_accs.append(train_acc)
 
-        acc = evaluate(model, test_dataloader)
+        acc, metrics = evaluate(model, test_dataloader)
         test_accs.append(acc)
 
-        print('Epoch #{} Test Acc: {:.2f}%'.format(i, acc * 100))
+        print('Epoch #{} Val Acc: {:.2f}%'.format(i, acc * 100))
         print('')
 
         if acc > best_acc:
             best_acc = acc
             best_model = model.state_dict()
+            best_metrics = metrics
 
     save_data = {
         'best_acc': best_acc,
+        'best_metrics': best_metrics,
         'losses': losses,
         'train_accs': train_accs,
         'test_accs': test_accs,
@@ -218,9 +250,33 @@ def lstm(config, embedding_data, code):
         pickle.dump(save_data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
+def load_model(config, code):
+    model_file = 'saves/{}_model'.format(code)
+    model = LSTMClassifier(
+        config,
+        embedding_dim=config.feature_size,
+        hidden_dim=128,
+        label_size=2)
+    model.load_state_dict(torch.load(model_file))
+    return model
+
+
 if __name__ == '__main__':
     config = get_config()
+    pre_data = pd.read_csv(config.pre_save_file).values
+    split = int(len(pre_data) * 0.9)
 
-    code = THIRD
-    embedding_data = word2vec(config, code=code, batch=False)
-    lstm(config, embedding_data, code)
+    trainval = pre_data[:split]
+    test = pre_data[split:]
+
+    # Save trainval and test datasets
+    with open('trainval_set', 'wb') as f:
+        pickle.dump(trainval, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    with open('test_set', 'wb') as f:
+        pickle.dump(test, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    for code in [FIRST, SECOND, THIRD, FOURTH]:
+        embedding_data = word2vec(
+            config, code=code, batch=False, pre_data=trainval)
+        lstm(config, embedding_data, code)
