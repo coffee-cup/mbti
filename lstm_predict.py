@@ -38,23 +38,24 @@ def load_model(config, code):
     return model
 
 
-def predict(config, text, code, model=None):
+def predict(config, text, code, model=None, embedding_input=None):
     if model is None:
         model = load_model(config, code)
 
     preprocessed = preprocess_text(text)
 
-    word_model = load_word2vec(config.embeddings_model)
-    embedding = []
-    embedding = []
-    for word in preprocessed.split(' '):
-        if word in word_model.wv.index2word:
-            vec = word_model.wv[word]
-            embedding.append(vec)
+    if embedding_input is None:
+        embedding = []
+        word_model = load_word2vec(config.embeddings_model)
+        for word in preprocessed.split(' '):
+            if word in word_model.wv.index2word:
+                vec = word_model.wv[word]
+                embedding.append(vec)
 
-    input = Variable(torch.Tensor(np_sentence_to_list(embedding)))
+        embedding_input = Variable(
+            torch.Tensor(np_sentence_to_list(embedding)))
 
-    pred = model(input)
+    pred = model(embedding_input)
     pred_label = pred.data.max(1)[1].numpy()[0]
     pred_char = get_char_for_binary(code, pred_label)
     return pred_char
