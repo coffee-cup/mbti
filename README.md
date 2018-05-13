@@ -1,5 +1,9 @@
 # MBTI Personality Type Predictor
 
+Personality type predictor using PyTorch. Attempts to predicts the 16 way personality code as well as each binary character code along each axis.
+
+View the [report here](https://github.com/coffee-cup/uvic-data-mining-mbti/blob/master/report.pdf).
+
 ## Dataset
 
 Download and extract the csv file from [Kaggle](https://www.kaggle.com/datasnaek/mbti-type/version/1).
