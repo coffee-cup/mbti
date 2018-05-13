@@ -649,3 +649,7 @@ $RECYCLE.BIN/
 dataset.zip
 *.csv
 data/
+test.png
+results/*
+saves/*
+saves*
